@@ -1,0 +1,5 @@
+[
+	{"type": "domain", "data": "privatepage.vip"},
+	{"type": "whiteListDomain", "data": "discord.gg"},
+	{"type": "whiteListDomain", "data": "discordapp.com"}
+]

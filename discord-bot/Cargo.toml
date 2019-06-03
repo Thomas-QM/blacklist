@@ -1,0 +1,12 @@
+[package]
+name = "discord_bot"
+version = "0.1.0"
+authors = ["Thomas-QM <thomas@engineeringvirtue.net>"]
+edition = "2018"
+
+[dependencies]
+blacklist_lib = {path = "../blacklist-lib"}
+
+serenity = "0.5.14"
+onig = "4.3.2"
+dotenv = "0.14.1"

@@ -1,0 +1,15 @@
+[package]
+name = "blacklist_scraper"
+version = "0.1.0"
+authors = ["Thomas-QM <thomas@engineeringvirtue.net>"]
+edition = "2018"
+
+[dependencies]
+blacklist_lib = {path = "../blacklist-lib"}
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.39"
+
+dotenv = "0.14.1"
+rayon = "1.0.3"
+reqwest = "0.9.17"
