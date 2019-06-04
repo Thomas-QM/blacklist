@@ -18,10 +18,12 @@ fn main() {
 
     let mut append = false;
     let mut ext_only = false;
+    let mut no_write = false;
 
     for arg in env::args() {
         if arg == "ext-only" { ext_only = true }
         else if arg == "append" { append = true }
+        else if arg == "no-write" { no_write = true }
     }
 
     let mut bl = if append {
@@ -45,8 +47,10 @@ fn main() {
     bl.sort_unstable();
 	bl.dedup();
 
-    println!("Writing to file...");
-    write(&bl);
+    if !no_write {
+        println!("Writing to file...");
+        write(&bl);
+    }
 
     println!("Finished: {}", bl.len());
 }

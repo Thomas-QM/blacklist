@@ -91,30 +91,50 @@ pub fn load() -> Blacklist {
     bl
 }
 
-pub fn check(url: &str, bl: &Blacklist) -> bool {    
+pub fn check(url: &str, bl: &Blacklist) -> bool {
+    let len = url.len(); //optimize static call not really but also abbreviation
+
     let domain_start = url.find("://").map(|x| x+3).unwrap_or(0);
-    let domain_end = url[domain_start..].find('/').map(|x| x+domain_start).unwrap_or(url.len());
+    
+    let mut separators: Vec<usize> =
+        url[domain_start..].char_indices().filter_map(|(i, c)| {
+            if c == '/' || c == '.' {
+                Some(domain_start+i)
+            } else {
+                None
+            }
+        }).collect();
+
+    separators.push(domain_start);
+    separators.push(url.len());
+
+    let domain_end = url[domain_start..].find('/').map(|x| x+domain_start).unwrap_or(len);
 
     let domain = hash(&url[domain_start..domain_end]);
 
     let mut start_ranges = Vec::new();
-    for x in domain_start..domain_end {
-        start_ranges.push(hash(&url[domain_start..x]));
-    }
-
     let mut end_ranges = Vec::new();
-    for x in domain_start..domain_end {
-        end_ranges.push(hash(&url[x..domain_end]));
+    
+    if len-domain_start > 0 {
+        for sep in &separators {
+            start_ranges.push(hash(&url[domain_start..*sep]));
+        }
+
+        for sep in &separators {
+            end_ranges.push(hash(&url[*sep..]));
+        }
     }
 
     let mut url_ranges = Vec::new();
-    for x in 0..url.len() {
-        url_ranges.push(hash(&url[0..x]));
+    if len > 0 {
+        for x in 1..len {
+            url_ranges.push(hash(&url[0..x]));
+        }
     }
 
     for bi in bl {
         let x = bi.1;
-        let x = match bi.0 {
+        let res = match bi.0 {
             BlacklistMode::WhiteListDomain =>
                 if x == domain { return false } else { false },
 
@@ -124,7 +144,7 @@ pub fn check(url: &str, bl: &Blacklist) -> bool {
             BlacklistMode::EndsWith => end_ranges.contains(&x)
         };
 
-        if x {
+        if res {
             return true;
         }
     }
