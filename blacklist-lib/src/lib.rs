@@ -115,7 +115,9 @@ pub fn check(url: &str, bl: &Blacklist) -> bool {
     for bi in bl {
         let x = bi.1;
         let x = match bi.0 {
-            BlacklistMode::WhiteListDomain => return false,
+            BlacklistMode::WhiteListDomain =>
+                if x == domain { return false } else { false },
+
             BlacklistMode::Domain => domain == x,
             BlacklistMode::StartsWith => start_ranges.contains(&x),
             BlacklistMode::UrlStartsWith => url_ranges.contains(&x),
