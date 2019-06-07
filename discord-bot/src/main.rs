@@ -19,18 +19,20 @@ struct Handler {
 }
 
 impl EventHandler for Handler {
-    fn message(&self, _ctx: Context, message: Message) {        
+    fn message(&self, _ctx: Context, message: Message) {
+        if message.author.bot {
+            return;
+        }
+
         let guild = match message.guild_id {
             Some(x) => x, _ => return
         };
 
         for (from, to) in self.link_regex.find_iter(&message.content) {            
             if check(&message.content[from..to], &self.blacklist) {
-                if message.delete().is_err() {
-                    let _ = message.reply("Could not delete message!");
-                } else {
-                    let _ = guild.kick(message.author.id);
-                }
+                //if the bot doesnt have perms, it wont do it... easy config :)
+                let _ = message.delete();
+                let _ = guild.kick(message.author.id);
             }
         }
     }

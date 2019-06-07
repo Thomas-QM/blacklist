@@ -96,7 +96,7 @@ pub fn check(url: &str, bl: &Blacklist) -> bool {
 
     let domain_start = url.find("://").map(|x| x+3).unwrap_or(0);
     
-    let mut separators: Vec<usize> =
+    let separators: Vec<usize> =
         url[domain_start..].char_indices().filter_map(|(i, c)| {
             if c == '/' || c == '.' {
                 Some(domain_start+i)
@@ -105,12 +105,19 @@ pub fn check(url: &str, bl: &Blacklist) -> bool {
             }
         }).collect();
 
-    separators.push(domain_start);
-    separators.push(url.len());
-
+    let domain_url = hash(&url[domain_start..]);
     let domain_end = url[domain_start..].find('/').map(|x| x+domain_start).unwrap_or(len);
-
+    
     let domain = hash(&url[domain_start..domain_end]);
+    let mut subdomains = Vec::new();
+
+    for i in &separators {
+        let i = *i;
+
+        if i < domain_end {
+            subdomains.push(hash(&url[i..domain_end]));
+        }
+    }
 
     let mut start_ranges = Vec::new();
     let mut end_ranges = Vec::new();
@@ -136,12 +143,13 @@ pub fn check(url: &str, bl: &Blacklist) -> bool {
         let x = bi.1;
         let res = match bi.0 {
             BlacklistMode::WhiteListDomain =>
-                if x == domain { return false } else { false },
+                if x == domain || subdomains.contains(&x)
+                    { return false } else { false },
 
-            BlacklistMode::Domain => domain == x,
-            BlacklistMode::StartsWith => start_ranges.contains(&x),
+            BlacklistMode::Domain => subdomains.contains(&x) || domain == x,
+            BlacklistMode::StartsWith => start_ranges.contains(&x) || domain_url == x,
             BlacklistMode::UrlStartsWith => url_ranges.contains(&x),
-            BlacklistMode::EndsWith => end_ranges.contains(&x)
+            BlacklistMode::EndsWith => end_ranges.contains(&x) || domain_url == x
         };
 
         if res {

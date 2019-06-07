@@ -6,11 +6,15 @@ use rayon::prelude::*;
 
 const SUPPORTED_SYNTAXES: [u8; 5] = [1, 2, 8, 16, 20];
 
-fn interpret(bl: &mut Blacklist, i: u8, s: &str) {
+fn interpret(bl: &mut Blacklist, i: u8, whitelist: bool, s: &str) {
 	fn hostlike_syntax<F: FnMut(&str)>(s: &str, mut f: F) {
 		for line in s.split('\n') {
 			//skip if comment or completely spaces
 			if line.starts_with('#') || line.trim_start_matches(' ').len() == 0 { continue; }
+			if line == "404: Not Found" { //github raw content not found
+				break;
+			}
+
 			f(line.trim_end_matches('\r'));
 		}
 	}
@@ -27,11 +31,19 @@ fn interpret(bl: &mut Blacklist, i: u8, s: &str) {
 					line = &line[HOST_PREFIX_2.len()+1..];
 				}
 
-				bl.push(BlacklistItem(BlacklistMode::Domain, hash(line)));
+				if whitelist {
+					bl.push(BlacklistItem(BlacklistMode::WhiteListDomain, hash(line)));
+				} else {
+					bl.push(BlacklistItem(BlacklistMode::Domain, hash(line)));
+				}
 			});
 		}, 2 => {
 			hostlike_syntax(s, |line| {
-				bl.push(BlacklistItem(BlacklistMode::Domain, hash(line)));
+				if whitelist {
+					bl.push(BlacklistItem(BlacklistMode::WhiteListDomain, hash(line)));
+				} else {
+					bl.push(BlacklistItem(BlacklistMode::Domain, hash(line)));
+				}
 			});
 		}, 8 => {
 			hostlike_syntax(s, |line| {
@@ -79,19 +91,14 @@ pub fn scrape(bl: &mut Blacklist) {
 		let items = get(FILTERLISTS).unwrap()
 			.json::<Vec<FilterListsItem>>().unwrap();
 
-		let items: Vec<(u8, String)> =
+		let items: Vec<(u8, bool, String)> =
 			items.into_par_iter().filter_map(|x| {
 				if let Some(syntax) = x.syntax_id {
 					if SUPPORTED_SYNTAXES.contains(&syntax) {
-						if x.view_url.contains("whitelist") {
-							println!("Discarding {}, it *might* be a whitelist.", x.name);
-							return None;
-						}
-
 						println!("Fetching {}", x.name);
 
 						match get(&x.view_url).and_then(|mut x| x.text()) {
-							Ok(resp) => return Some((syntax, resp)),
+							Ok(resp) => return Some((syntax, x.view_url.contains("whitelist"), resp)),
 							Err(err) => println!("Error fetching from {}: {}", &x.view_url, err)
 						}
 					}
@@ -102,8 +109,8 @@ pub fn scrape(bl: &mut Blacklist) {
 			.collect();
 
 		println!("Compiling...");
-		for (syntax, resp) in items {
-			interpret(bl, syntax, &resp);
+		for (syntax, whitelist, resp) in items {
+			interpret(bl, syntax, whitelist, &resp);
 		}
 	}
 }
